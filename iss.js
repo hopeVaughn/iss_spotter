@@ -36,5 +36,23 @@ const fetchCoordsByIP = function(ip, callback) {
   });
 };
 
+const fetchISSFlyOverTimes = function(coords, callback) {
+  const url = `http://iss-pass.herokuapp.com/json/?lat=${coords.latitude}&lon=${coords.longitude}`;
 
-module.exports = { fetchMyIP, fetchCoordsByIP };
+  request(url, (error, response, body) => {
+    if (error) {
+      callback(error, null);
+      return;
+    }
+
+    if (response.statusCode !== 200) {
+      callback(`Status Code ${response.statusCode} when fetching ISS pass times: ${body}`, null);
+      return;
+    }
+
+    const passes = JSON.parse(body).response;
+    callback(null, passes);
+  });
+};
+
+module.exports = { fetchMyIP, fetchCoordsByIP, fetchISSFlyOverTimes };
