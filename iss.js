@@ -2,7 +2,7 @@ const request = require('request');
 
 const fetchMyIP = function(callback) {
   // use request to fetch IP address from JSON API
-  request(`https://api.ipify.org?format=json`, (error, response, body) => {
+  request(`https://api.ipify.org/?format=json`, (error, response, body) => {
 
     if (error) {
       return callback(error, null);
@@ -13,14 +13,14 @@ const fetchMyIP = function(callback) {
       return;
     }
 
-    const ip = JSON.parse(body);
+    const ip = JSON.parse(body).ip;
     callback(null, ip);
 
   });
 };
 
 const fetchCoordsByIP = function(ip, callback) {
-  request(`https://api.ipbase.com/json/?ip=${ip}&apikey=dukytUC8R0GKC2s7H4M1rjq6U2SUCalRd6m2bk7S`, (error, response, body) => {
+  request(`https://api.ipbase.com/v2/info?ip=${ip}&apikey=dukytUC8R0GKC2s7H4M1rjq6U2SUCalRd6m2bk7S`, (error, response, body) => {
 
     if (error) {
       callback(error, null);
@@ -30,14 +30,14 @@ const fetchCoordsByIP = function(ip, callback) {
       callback(`Status Code ${response.statusCode} when fetching Coordinates for IP: ${body}`, null);
       return;
     }
-    const { latitude, longitude } = JSON.parse(body);
+    const { latitude, longitude } = JSON.parse(body).data.location;
 
     callback(null, { latitude, longitude });
   });
 };
 
 const fetchISSFlyOverTimes = function(coords, callback) {
-  const url = `http://iss-pass.herokuapp.com/json/?lat=${coords.latitude}&lon=${coords.longitude}`;
+  const url = `https://iss-pass.herokuapp.com/json/?lat=${coords.latitude}&lon=${coords.longitude}`;
 
   request(url, (error, response, body) => {
     if (error) {
@@ -46,7 +46,7 @@ const fetchISSFlyOverTimes = function(coords, callback) {
     }
 
     if (response.statusCode !== 200) {
-      callback(`Status Code ${response.statusCode} when fetching ISS pass times: ${body}`, null);
+      callback(Error(`Status Code ${response.statusCode} when fetching ISS pass times: ${body}`), null);
       return;
     }
 
@@ -55,4 +55,26 @@ const fetchISSFlyOverTimes = function(coords, callback) {
   });
 };
 
-module.exports = { fetchMyIP, fetchCoordsByIP, fetchISSFlyOverTimes };
+const nextISSTimesForMyLocation = function(callback) {
+  fetchMyIP((error, ip) => {
+    if (error) {
+      return callback(error, null);
+    }
+
+    fetchCoordsByIP(ip, (error, loc) => {
+      if (error) {
+        return callback(error, null);
+      }
+
+      fetchISSFlyOverTimes(loc, (error, nextPasses) => {
+        if (error) {
+          return callback(error, null);
+        }
+
+        callback(null, nextPasses);
+      });
+    });
+  });
+};
+
+module.exports = { nextISSTimesForMyLocation };
